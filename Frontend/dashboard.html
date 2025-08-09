@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Repository Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1, h2 {
+            color: #0366d6;
+        }
+        .card {
+            background-color: #f6f8fa;
+            border: 1px solid #e1e4e8;
+            border-radius: 6px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        .stat {
+            display: inline-block;
+            margin-right: 16px;
+            font-weight: bold;
+        }
+        .label {
+            font-weight: bold;
+        }
+        .value {
+            margin-left: 8px;
+        }
+        #search-container {
+            margin-bottom: 20px;
+        }
+        #owner, #repo {
+            width: 30%;
+            padding: 8px;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        #search-btn {
+            padding: 8px 16px;
+            font-size: 16px;
+            background-color: #0366d6;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        #search-btn:hover {
+            background-color: #024ea4;
+        }
+        #error-message {
+            color: red;
+            margin-top: 10px;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Repository Dashboard</h1>
+    <div id="search-container">
+        <input type="text" id="owner" placeholder="Enter owner name" required>
+        <input type="text" id="repo" placeholder="Enter repo name" required>
+        <button id="search-btn">Search</button>
+        <p id="error-message" class="hidden"></p>
+    </div>
+    <div id="repo-info" class="card hidden"></div>
+    <div id="owner-info" class="card hidden"></div>
+    <div id="stats" class="card hidden"></div>
+    <div id="settings" class="card hidden"></div>
+    <div id="urls" class="card hidden"></div>
+
+    <script>
+        function createInfoElement(label, value) {
+            return `<p><span class="label">${label}:</span><span class="value">${value}</span></p>`;
+        }
+
+        function formatDate(dateString) {
+            return new Date(dateString).toLocaleString();
+        }
+
+        function showError(message) {
+            const errorElement = document.getElementById('error-message');
+            errorElement.textContent = message;
+            errorElement.classList.remove('hidden');
+        }
+
+        function hideError() {
+            document.getElementById('error-message').classList.add('hidden');
+        }
+
+        function showElement(id) {
+            document.getElementById(id).classList.remove('hidden');
+        }
+
+        function hideAllCards() {
+            ['repo-info', 'owner-info', 'stats', 'settings', 'urls'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+        }
+
+        async function fetchRepoData(owner, repo) {
+            const response = await fetch(`http://localhost:8080/${owner}/${repo}`);
+            if (!response.ok) {
+                // Handle specific error codes
+                if (response.status === 404) {
+                    throw new Error('Repository not found');
+                } else {
+                    throw new Error('API request failed');
+                }
+            }
+            return response.json();
+        }
+
+        function updateDashboard(repoData) {
+            document.getElementById('repo-info').innerHTML = `
+                <h2>Repository Information</h2>
+                ${createInfoElement('Name', repoData.name)}
+                ${createInfoElement('Full Name', repoData.full_name)}
+                ${createInfoElement('ID', repoData.id)}
+                ${createInfoElement('Description', repoData.description || 'No description')}
+                ${createInfoElement('Visibility', repoData.visibility)}
+                ${createInfoElement('Archived', repoData.archived ? 'Yes' : 'No')}
+                ${createInfoElement('Created', formatDate(repoData.created_at))}
+                ${createInfoElement('Last Updated', formatDate(repoData.updated_at))}
+                ${createInfoElement('Last Pushed', formatDate(repoData.pushed_at))}
+            `;
+
+            document.getElementById('owner-info').innerHTML = `
+                <h2>Owner Information</h2>
+                ${createInfoElement('Name', repoData.owner.login)}
+                ${createInfoElement('Type', repoData.owner.type)}
+                ${createInfoElement('ID', repoData.owner.id)}
+            `;
+
+            document.getElementById('stats').innerHTML = `
+                <h2>Statistics</h2>
+                <div class="stat">Stars: ${repoData.stargazers_count}</div>
+                <div class="stat">Watchers: ${repoData.watchers_count}</div>
+                <div class="stat">Forks: ${repoData.forks_count}</div>
+                <div class="stat">Open Issues: ${repoData.open_issues_count}</div>
+                <div class="stat">Size: ${repoData.size} KB</div>
+            `;
+
+            document.getElementById('settings').innerHTML = `
+                <h2>Repository Settings</h2>
+                ${createInfoElement('Has Issues', repoData.has_issues ? 'Yes' : 'No')}
+                ${createInfoElement('Has Projects', repoData.has_projects ? 'Yes' : 'No')}
+                ${createInfoElement('Has Wiki', repoData.has_wiki ? 'Yes' : 'No')}
+                ${createInfoElement('Has Downloads', repoData.has_downloads ? 'Yes' : 'No')}
+                ${createInfoElement('Has Discussions', repoData.has_discussions ? 'Yes' : 'No')}
+                ${createInfoElement('Allows Forking', repoData.allow_forking ? 'Yes' : 'No')}
+                ${createInfoElement('Is Template', repoData.is_template ? 'Yes' : 'No')}
+                ${createInfoElement('Web Commit Signoff Required', repoData.web_commit_signoff_required ? 'Yes' : 'No')}
+                ${createInfoElement('Default Branch', repoData.default_branch)}
+                ${createInfoElement('License', repoData.license ? repoData.license.name : 'No license')}
+            `;
+
+            document.getElementById('urls').innerHTML = `
+                <h2>Repository URLs</h2>
+                ${createInfoElement('HTML URL', `<a href="${repoData.html_url}" target="_blank">${repoData.html_url}</a>`)}
+                ${createInfoElement('Clone URL', repoData.clone_url)}
+                ${createInfoElement('Git URL', repoData.git_url)}
+                ${createInfoElement('SSH URL', repoData.ssh_url)}
+            `;
+
+            ['repo-info', 'owner-info', 'stats', 'settings', 'urls'].forEach(showElement);
+        }
+
+        document.getElementById('search-btn').addEventListener('click', async () => {
+            const owner = document.getElementById('owner').value.trim();
+            const repo = document.getElementById('repo').value.trim();
+            hideError();
+            hideAllCards();
+
+            // Input validation
+            if (!owner || !repo) {
+                showError('Please enter both owner and repository name');
+                return;
+            }
+
+            try {
+                const repoData = await fetchRepoData(owner, repo);
+                updateDashboard(repoData);
+            } catch (error) {
+                showError(error.message);
+            }
+        });
+    </script>
+</body>
+</html>
