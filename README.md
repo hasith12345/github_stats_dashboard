@@ -37,6 +37,3 @@ Frontend/
 ## Notes
 - If you encounter `command not found: bal`, install Ballerina and add it to your PATH.
 - Adjust backend or frontend code as needed for your environment.
-
-## License
-MIT License
